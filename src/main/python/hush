@@ -1,0 +1,67 @@
+#! /usr/bin/python3 -u
+# -*- coding: utf-8; -*-
+"""
+(C) Copyright 2018 Taylor Raack (taylor@raack.info).
+
+Hush is free software: you can redistribute it and/or modify
+it under the terms of the Affero GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Hush is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+Affero GNU General Public License for more details.
+
+You should have received a copy of the Affero GNU General Public License
+along with Hush.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
+import gi
+
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
+
+import gpg
+
+class MainDialog():
+    def __init__(self):
+        self.gladefile = "../glade/hush.glade"
+        self.builder = Gtk.Builder()
+        self.builder.add_from_file(self.gladefile)
+
+        self.recipient_entry_list_store = self.builder.get_object("recipient_entry_list_store")
+        self.builder.connect_signals(self)
+        self.clear_text_object = self.builder.get_object("clear_text")
+        self.encrypted_signed_text_object = self.builder.get_object("encrypted_and_signed_text")
+
+        self.window = self.builder.get_object("configuration")
+
+    def show(self):
+        self.window.show_all()
+
+    def on_recipient_search_changed(self, search_entry):
+        print(search_entry.get_text())
+        
+    def on_encrypt_clicked(self, extra):
+        print("encrypt clicked")
+        with gpg.Context(armor=True) as c:
+            recipients = []
+            new = list(c.keylist("demo2@raack.info"))
+            recipients.extend(new)
+            buf = self.clear_text_object.get_buffer()
+            ciphertext, _, _ = c.encrypt(buf.get_text(buf.get_start_iter(), buf.get_end_iter(), True).encode('utf-8'), recipients)
+            self.encrypted_signed_text_object.get_buffer().set_text(ciphertext.decode('utf-8'))
+        
+    def on_destroy(self, *args):
+        print("quitting")
+        Gtk.main_quit()
+
+class App():
+    def __init__(self):
+        self.main_dialog = MainDialog()
+        self.main_dialog.show()
+        Gtk.main()
+
+if __name__ == "__main__":
+    App()
